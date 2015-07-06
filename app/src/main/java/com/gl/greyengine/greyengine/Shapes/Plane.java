@@ -1,4 +1,6 @@
-package com.gl.greyengine.greyengine;
+package com.gl.greyengine.greyengine.Shapes;
+
+import com.orhanobut.logger.Logger;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -11,17 +13,11 @@ import javax.microedition.khronos.opengles.GL10;
  * Created by Sharan on 21-Jun-15.
  */
 public class Plane {
-    public static short indices[] = {
-            0, 1, 2, 3
-    };
     public FloatBuffer mVertexBuffer;
-    public ShortBuffer mIndexBuffer;
     public float corners[] = {
-            5, 5,
-            5, -5,
-            -5, -5,
-            -5, 5
+
     };
+    public int numberofcorners = 0;
     public float color[] = {
             240f / 255f, 240f / 255f, 240f / 255f, 1f
     };
@@ -29,13 +25,18 @@ public class Plane {
 
     public Plane() {
         initBuffers();
-        mIndexBuffer = ByteBuffer.allocateDirect(indices.length * 4).order(ByteOrder.nativeOrder()).asShortBuffer();
-        mIndexBuffer.put(indices);
-        mIndexBuffer.position(0);
     }
 
     public void setCorners(float[] corners) {
         this.corners = corners;
+        numberofcorners = corners.length / 2;
+        initBuffers();
+    }
+
+    public void setCorners(float[] corners, float col[]) {
+        this.corners = corners;
+        numberofcorners = corners.length / 2;
+        this.color = col;
         initBuffers();
     }
 
@@ -62,10 +63,10 @@ public class Plane {
 
         gl.glColor4f(color[0], color[1], color[2], color[3]);
 
-        gl.glDrawElements(GL10.GL_TRIANGLE_FAN, indices.length, GL10.GL_UNSIGNED_SHORT, mIndexBuffer);
+        gl.glDrawArrays(GL10.GL_TRIANGLE_FAN, 0, numberofcorners);
 
         gl.glColor4f(colorborder[0], colorborder[1], colorborder[2], colorborder[3]);
-        gl.glDrawArrays(GL10.GL_LINE_LOOP, 0, 4);
+        gl.glDrawArrays(GL10.GL_LINE_LOOP, 0, numberofcorners);
         gl.glDisableClientState(GL10.GL_VERTEX_ARRAY);
         gl.glDisableClientState(GL10.GL_COLOR_ARRAY);
     }

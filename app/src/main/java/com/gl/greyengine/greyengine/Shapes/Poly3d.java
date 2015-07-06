@@ -1,4 +1,7 @@
-package com.gl.greyengine.greyengine;
+package com.gl.greyengine.greyengine.Shapes;
+
+import com.gl.greyengine.greyengine.Utils.EarClippingTriangulator;
+import com.gl.greyengine.greyengine.Utils.ShortArray;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -13,6 +16,7 @@ import javax.microedition.khronos.opengles.GL10;
 public class Poly3d {
 
     public float height = 1.0f;
+
     //vertices for the polygon in 2d
     public float polyvertices[] = {
             0, 0,
@@ -20,7 +24,9 @@ public class Poly3d {
             0, 1
     };
     public int numofpolyvertices = 3;
+
     public float borderwidth = 1f;
+
     public float colorfaces[] = {
             233f / 255f, 230f / 255f, 226f / 255f, 0.7f
     };
@@ -30,13 +36,18 @@ public class Poly3d {
     public float colorline[] = {
             225f / 255f, 221f / 255f, 210 / 255f, 1f
     };
+
     //Internal rendering variables
     private FloatBuffer mVertexBuffer;
-    private ShortBuffer borderIndexBuffer;
+    private ShortBuffer mBorderIndexBuffer;
     private ShortBuffer mIndexBuffer;
-    private short indices[];
-    private float vertices[];
+    private ShortBuffer mTopIndexBuffer;
+
+    private short sideindices[];
     private short borderIndices[];
+    private ShortArray topindices;
+
+    private float vertices[];
 
     public Poly3d() {
         calctriangles();
@@ -53,19 +64,25 @@ public class Poly3d {
         mVertexBuffer.put(vertices);
         mVertexBuffer.position(0);
 
-        mIndexBuffer = ByteBuffer.allocateDirect(indices.length * 4).order(ByteOrder.nativeOrder()).asShortBuffer();
-        mIndexBuffer.put(indices);
+        mIndexBuffer = ByteBuffer.allocateDirect(sideindices.length * 4).order(ByteOrder.nativeOrder()).asShortBuffer();
+        mIndexBuffer.put(sideindices);
         mIndexBuffer.position(0);
 
-        borderIndexBuffer = ByteBuffer.allocateDirect(borderIndices.length * 4).order(ByteOrder.nativeOrder()).asShortBuffer();
-        borderIndexBuffer.put(borderIndices);
-        borderIndexBuffer.position(0);
+        mBorderIndexBuffer = ByteBuffer.allocateDirect(borderIndices.length * 4).order(ByteOrder.nativeOrder()).asShortBuffer();
+        mBorderIndexBuffer.put(borderIndices);
+        mBorderIndexBuffer.position(0);
+
+        EarClippingTriangulator earClippingTriangulator = new EarClippingTriangulator();
+        topindices = earClippingTriangulator.computeTriangles(polyvertices);
+        mTopIndexBuffer = ByteBuffer.allocateDirect(topindices.size * 4).order(ByteOrder.nativeOrder()).asShortBuffer();
+        mTopIndexBuffer.put(topindices.toArray());
+        mTopIndexBuffer.position(0);
     }
 
     public void calctriangles() {
         vertices = new float[numofpolyvertices * 3 * 2];
         borderIndices = new short[numofpolyvertices * 2];
-        indices = new short[numofpolyvertices * 3 * 2];
+        sideindices = new short[numofpolyvertices * 3 * 2];
         for (int i = 0; i < numofpolyvertices; i++) {
             vertices[i * 3] = polyvertices[i * 2];
             vertices[i * 3 + 1] = polyvertices[i * 2 + 1];
@@ -74,12 +91,12 @@ public class Poly3d {
             vertices[i * 3 + 1 + (numofpolyvertices * 3)] = polyvertices[i * 2 + 1];
             vertices[i * 3 + 2 + (numofpolyvertices * 3)] = height;
 
-            indices[i * 6] = (short) i;
-            indices[i * 6 + 1] = (short) ((i + 1) % numofpolyvertices);
-            indices[i * 6 + 2] = (short) (numofpolyvertices + i);
-            indices[i * 6 + 3] = (short) (numofpolyvertices + i);
-            indices[i * 6 + 4] = (short) (numofpolyvertices + (i + 1) % numofpolyvertices);
-            indices[i * 6 + 5] = (short) ((i + 1) % numofpolyvertices);
+            sideindices[i * 6] = (short) i;
+            sideindices[i * 6 + 1] = (short) ((i + 1) % numofpolyvertices);
+            sideindices[i * 6 + 2] = (short) (numofpolyvertices + i);
+            sideindices[i * 6 + 3] = (short) (numofpolyvertices + i);
+            sideindices[i * 6 + 4] = (short) (numofpolyvertices + (i + 1) % numofpolyvertices);
+            sideindices[i * 6 + 5] = (short) ((i + 1) % numofpolyvertices);
 
             borderIndices[i * 2] = (short) i;
             borderIndices[i * 2 + 1] = (short) (numofpolyvertices + i);
@@ -104,19 +121,16 @@ public class Poly3d {
         gl.glColor4f(colorline[0], colorline[1], colorline[2], 1.0f);
         gl.glLineWidth(borderwidth);
 
-        //gl.glDrawArrays(GL10.GL_LINE_LOOP,0,numofpolyvertices);
         gl.glDrawArrays(GL10.GL_LINE_LOOP, 0, numofpolyvertices);
         gl.glDrawArrays(GL10.GL_LINE_LOOP, numofpolyvertices, numofpolyvertices);
 
-        gl.glDrawElements(GL10.GL_LINES, borderIndices.length, GL10.GL_UNSIGNED_SHORT, borderIndexBuffer);
+        gl.glDrawElements(GL10.GL_LINES, borderIndices.length, GL10.GL_UNSIGNED_SHORT, mBorderIndexBuffer);
 
         gl.glColor4f(colorfaces[0], colorfaces[1], colorfaces[2], colorfaces[3]);
-        gl.glDrawElements(GL10.GL_TRIANGLES, indices.length, GL10.GL_UNSIGNED_SHORT, mIndexBuffer);
+        gl.glDrawElements(GL10.GL_TRIANGLES, sideindices.length, GL10.GL_UNSIGNED_SHORT, mIndexBuffer);
 
         gl.glColor4f(colortop[0], colortop[1], colortop[2], colortop[3]);
-        //gl.glDrawArrays(GL10.GL_TRIANGLE_FAN,0,numofpolyvertices);
-        gl.glDrawArrays(GL10.GL_TRIANGLE_FAN, numofpolyvertices, numofpolyvertices);
-
+        gl.glDrawElements(GL10.GL_TRIANGLES, topindices.size, GL10.GL_UNSIGNED_SHORT, mTopIndexBuffer);
         gl.glDisableClientState(GL10.GL_VERTEX_ARRAY);
     }
 

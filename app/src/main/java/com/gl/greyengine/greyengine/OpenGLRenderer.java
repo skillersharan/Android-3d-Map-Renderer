@@ -3,7 +3,8 @@ package com.gl.greyengine.greyengine;
 import android.opengl.GLSurfaceView;
 import android.opengl.GLU;
 
-import java.nio.FloatBuffer;
+import com.gl.greyengine.greyengine.Math.Vector3f;
+import com.gl.greyengine.greyengine.Shapes.MapWorld;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -13,10 +14,23 @@ import javax.microedition.khronos.opengles.GL10;
  */
 public class OpenGLRenderer implements GLSurfaceView.Renderer {
     MapWorld mw = new MapWorld();
-    private Poly3d mCube1 = new Poly3d();
-    private Poly3d mCube2 = new Poly3d();
-    private Plane mPlane1 = new Plane();
-    private float mRotation;
+
+    Vector3f eye = new Vector3f(0, 0, 1000);
+    Vector3f up = new Vector3f(0, 1, 0);
+    Vector3f center = new Vector3f(0, 0, 0);
+
+    private float nearclipping = 0.1f;
+    private float farclipping = 5000f;
+
+    public OpenGLRenderer(MapWorld mw) {
+        this.mw = mw;
+    }
+
+    public void setMapWorld(MapWorld map) {
+        mw = map;
+    }
+
+
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
@@ -30,10 +44,6 @@ public class OpenGLRenderer implements GLSurfaceView.Renderer {
 
         gl.glEnable(GL10.GL_BLEND);
         gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-
-        mw.addPolygon(new float[]{3, 3, 4, 3, 4, 4, 3, 4});
-        mw.addPolygon(new float[]{0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f});
-        mw.addPolygon(new float[]{-3.0f, -3.0f, -4.0f, -3.0f, -4.0f, -4.0f, -3.0f, -4.0f});
     }
 
     @Override
@@ -41,11 +51,10 @@ public class OpenGLRenderer implements GLSurfaceView.Renderer {
         gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
         gl.glLoadIdentity();
 
-        gl.glTranslatef(0.0f, 0.0f, -20.0f);
-        gl.glRotatef(-45, 1, 0, 0);
-        gl.glRotatef(mRotation, 0.0f, 0.0f, 1.0f);
+        gl.glMatrixMode(GL10.GL_MODELVIEW);
+        gl.glLoadIdentity();
 
-        mRotation = (mRotation + 0.55f) % 360;
+        GLU.gluLookAt(gl, eye.m_x, eye.m_y, eye.m_z, center.m_x, center.m_y, center.m_z, up.m_x, up.m_y, up.m_z);
 
         mw.render(gl);
         gl.glLoadIdentity();
@@ -56,7 +65,7 @@ public class OpenGLRenderer implements GLSurfaceView.Renderer {
         gl.glViewport(0, 0, width, height);
         gl.glMatrixMode(GL10.GL_PROJECTION);
         gl.glLoadIdentity();
-        GLU.gluPerspective(gl, 45.0f, (float) width / (float) height, 0.1f, 500.0f);
+        GLU.gluPerspective(gl, 45.0f, (float) width / (float) height, nearclipping, farclipping);
         gl.glViewport(0, 0, width, height);
         gl.glMatrixMode(GL10.GL_MODELVIEW);
         gl.glLoadIdentity();
